@@ -22,22 +22,16 @@ int parse_block_size(const char *text, size_t *out_block_size) {
     char *endptr = NULL;
     long value;
 
-    if (text == NULL || out_block_size == NULL) {
+    if (text == NULL || out_block_size == NULL || *text == '\0') {
         return -1;
     }
 
-    /* TODO(student): parse block size safely with strtol
-       Requirements:
-       - reject empty input and trailing garbage
-       - reject overflow/underflow
-       - accept only values in [1, 4096]
-    */
     errno = 0;
     value = strtol(text, &endptr, 10);
     if (errno != 0 || endptr == text || *endptr != '\0') {
         return -1;
     }
-    if (value < 1 || value > 4096 || value > (long)SIZE_MAX) {
+    if (value < 1 || value > 4096) {
         return -1;
     }
 
@@ -108,18 +102,20 @@ int copy_with_metrics(const char *input_path, const char *output_path, size_t bl
 
         m->bytes += (long long)n;
 
-        /* TODO(student): handle partial writes correctly.
-           Keep writing until all n bytes are written, and increment
-           write_calls once per actual write() syscall.
-        */
-        if (write(out_fd, buf, (size_t)n) < 0) {
-            perror("write");
-            free(buf);
-            close(in_fd);
-            close(out_fd);
-            return -1;
+        size_t written_total = 0;
+        while (written_total < (size_t)n) {
+            ssize_t w = write(out_fd, buf + written_total, (size_t)n - written_total);
+            m->write_calls++;
+
+            if (w < 0) {
+                perror("write");
+                free(buf);
+                close(in_fd);
+                close(out_fd);
+                return -1;
+            }
+            written_total += (size_t)w;
         }
-        m->write_calls++;
     }
 
     end_us = now_us();
