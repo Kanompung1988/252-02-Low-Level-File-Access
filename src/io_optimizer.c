@@ -6,9 +6,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/types.h>
 #include <unistd.h>
+
+#ifndef O_BINARY
+#define O_BINARY 0
+#endif
 
 static long long now_us(void) {
     struct timeval tv;
@@ -55,13 +60,13 @@ int copy_with_metrics(const char *input_path, const char *output_path, size_t bl
     m->write_calls = 0;
     m->elapsed_us = 0;
 
-    in_fd = open(input_path, O_RDONLY);
+    in_fd = open(input_path, O_RDONLY | O_BINARY);
     if (in_fd < 0) {
         perror("open input");
         return -1;
     }
 
-    out_fd = open(output_path, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
+    out_fd = open(output_path, O_WRONLY | O_CREAT | O_TRUNC | O_BINARY, S_IRUSR | S_IWUSR);
     if (out_fd < 0) {
         perror("open output");
         close(in_fd);
